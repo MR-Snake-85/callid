@@ -57,16 +57,41 @@ def initialize_chat_session(name, email, token):
     }
 
     options = Options()
-    options.add_argument("--headless")  # modern headless mode
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--window-size=1920,1080")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
-    options.add_argument("--log-level=3")
-    options.add_argument("--incognito")
+    chrome_options.add_argument("--headless=new")  # Modern headless mode (Chrome 109+)
+    chrome_options.add_argument("--no-sandbox")  # Essential for Docker/Linux
+    chrome_options.add_argument("--disable-dev-shm-usage")  # Prevent /dev/shm issues
+    chrome_options.add_argument("--disable-gpu")  # GPU problems in headless
+    
+    # ===== STEALTH SETTINGS =====
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option("useAutomationExtension", False)
+    
+    # ===== PERFORMANCE OPTIMIZATIONS =====
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-software-rasterizer")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--log-level=3")  # Only fatal errors
+    
+    # ===== PRIVACY/SESSION SETTINGS =====
+    chrome_options.add_argument("--incognito")
+    chrome_options.add_argument("--disable-web-security")
+    chrome_options.add_argument("--disable-notifications")
+    
+    # ===== WINDOW MANAGEMENT =====
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--start-maximized")
+    
+    # ===== NETWORK SETTINGS =====
+    chrome_options.add_argument("--disable-domain-reliability")
+    chrome_options.add_argument("--disable-client-side-phishing-detection")
+    
+    # ===== EXPERIMENTAL OPTIONS =====
+    chrome_options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 2,
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False
+    })
 
 
 # Initialize the Chrome WebDriver
