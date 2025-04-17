@@ -58,6 +58,7 @@ def initialize_chat_session(name, email, token):
 
     options = Options()
 # Essential for headless on Linux
+    options.add_argument("--user-data-dir /tmp/udata")
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
