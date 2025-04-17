@@ -74,9 +74,9 @@ def initialize_chat_session(name, email, token):
     options.add_argument("--log-level=3")  # Only fatal errors
     
     # ===== PRIVACY/SESSION SETTINGS =====
-    chrome_options.add_argument("--incognito")
-    chrome_options.add_argument("--disable-web-security")
-    chrome_options.add_argument("--disable-notifications")
+    options.add_argument("--incognito")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--disable-notifications")
     
     # ===== WINDOW MANAGEMENT =====
     options.add_argument("--window-size=1920,1080")
