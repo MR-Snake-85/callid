@@ -57,42 +57,26 @@ def initialize_chat_session(name, email, token):
     }
 
     options = Options()
-    options.add_argument("--headless=new")  # Modern headless mode (Chrome 109+)
-    options.add_argument("--no-sandbox")  # Essential for Docker/Linux
-    options.add_argument("--disable-dev-shm-usage")  # Prevent /dev/shm issues
-    options.add_argument("--disable-gpu")  # GPU problems in headless
+# Essential for headless on Linux
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
     
-    # ===== STEALTH SETTINGS =====
+    # Linux-specific performance tweaks
+    options.add_argument("--single-process")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-logging")
+    options.add_argument("--log-level=3")
+    
+    # Session management
+    options.add_argument("--incognito")
+    options.add_argument("--window-size=1920,1080")
+    
+    # Anti-detection
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
-    
-    # ===== PERFORMANCE OPTIMIZATIONS =====
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-logging")
-    options.add_argument("--log-level=3")  # Only fatal errors
-    
-    # ===== PRIVACY/SESSION SETTINGS =====
-    options.add_argument("--incognito")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-notifications")
-    
-    # ===== WINDOW MANAGEMENT =====
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--start-maximized")
-    
-    # ===== NETWORK SETTINGS =====
-    options.add_argument("--disable-domain-reliability")
-    options.add_argument("--disable-client-side-phishing-detection")
-    
-    # ===== EXPERIMENTAL OPTIONS =====
-    options.add_experimental_option("prefs", {
-        "profile.default_content_setting_values.notifications": 2,
-        "credentials_enable_service": False,
-        "profile.password_manager_enabled": False
-    })
-
 
 # Initialize the Chrome WebDriver
     service = Service(ChromeDriverManager().install())
