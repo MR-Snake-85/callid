@@ -66,7 +66,7 @@ def initialize_chat_session(name, email, token):
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     options.add_argument("--log-level=3")
-
+    options.add_argument("--incognito")
 
 
 # Initialize the Chrome WebDriver
