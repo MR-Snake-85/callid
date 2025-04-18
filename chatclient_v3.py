@@ -10,9 +10,10 @@ from datetime import datetime
 import sys
 
 # Configuration
-LOGIN_URL = "https://thenorthnet.oh.3cx.us/MyPhone/c2clogin"
+MAIN_URL = "https://thenorthnet.oh.3cx.us"
+LOGIN_URL = f"{MAIN_URL}/MyPhone/c2clogin"
 C2CID = 1003
-MODE = 3  # 0: name+email, 1: email only, 2: name only, 3: anonymous
+MODE = 2  # 0: name+email, 1: email only, 2: name only, 3: anonymous
 
 def save_chat_message(sender, message):
     """Save chat messages to file with timestamp"""
@@ -28,7 +29,7 @@ def perform_login(name, email):
 
     headers = {"accept": "*/*", "user-agent": "Mozilla/5.0"}
     response = requests.get(LOGIN_URL, params=params, headers=headers)
-    
+
     if response.status_code != 200:
         print("❌ Login failed")
         sys.exit(1)
@@ -55,9 +56,14 @@ def get_agent_messages(driver):
         print("⚠️ Error reading agent messages:", e)
         return []
 
+def escape_js_string(s):
+    """Escape message for safe insertion into JavaScript string literal"""
+    return s.replace("\\", "\\\\").replace("`", "\\`").replace("\n", "\\n")
+
 def send_message(driver, message):
     """Send message through chat interface"""
     try:
+        escaped = escape_js_string(message)
         driver.execute_script(f'''
             const getNestedShadow = () => {{
                 const host1 = document.querySelector("#container > call-us-selector");
@@ -67,7 +73,7 @@ def send_message(driver, message):
                 const textarea = root2?.querySelector("textarea");
                 const sendBtn = root2?.querySelector("#sendBtn");
                 if (textarea && sendBtn) {{
-                    textarea.value = `{message}`;
+                    textarea.value = `{escaped}`;
                     textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
                     sendBtn.click();
                 }}
@@ -103,18 +109,18 @@ def wait_for_real_agent_reply(driver, previous_messages, timeout=600):
 def initialize_chat_session(name, email, token):
     """Initialize Chrome WebDriver with proper Linux configuration"""
     session_data = {
-        "binance-https://thenorthnet.oh.3cx.us": {},
-        "call-us-auth-https%3A%2F%2Fthenorthnet.oh.3cx.us": {"name": name, "email": email},
-        f"call-us-chat-active-https%3A%2F%2Fthenorthnet.oh.3cx.us{C2CID}": True,
-        "call-us-token-https%3A%2F%2Fthenorthnet.oh.3cx.us": token,
-        "ethereum-https://thenorthnet.oh.3cx.us": {"chainId": "0x1"},
+        f"binance-{MAIN_URL}": {},
+        f"call-us-auth-{MAIN_URL.replace(':', '%3A').replace('/', '%2F')}": {"name": name, "email": email},
+        f"call-us-chat-active-{MAIN_URL.replace(':', '%3A').replace('/', '%2F')}{C2CID}": True,
+        f"call-us-token-{MAIN_URL.replace(':', '%3A').replace('/', '%2F')}": token,
+        f"ethereum-{MAIN_URL}": {"chainId": "0x1"},
         "loglevel": "SILENT",
         "trust:cache:timestamp": {"timestamp": int(time.time() * 1000)},
         "wplc-ga-initiated": "29"
     }
 
     options = Options()
-    options.add_argument("--headless")  # safer than --headless=new
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
@@ -127,8 +133,8 @@ def initialize_chat_session(name, email, token):
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-        
-        driver.get(f"https://thenorthnet.oh.3cx.us/callus/#{C2CID}")
+
+        driver.get(f"{MAIN_URL}/callus/#{C2CID}")
         time.sleep(2)
 
         for key, value in session_data.items():
@@ -136,7 +142,7 @@ def initialize_chat_session(name, email, token):
             driver.execute_script(f'window.localStorage.setItem("{key}", {value_js});')
 
         driver.refresh()
-        time.sleep(10)  # increased to allow full load
+        time.sleep(5)
         return driver
 
     except Exception as e:
@@ -181,7 +187,7 @@ if __name__ == "__main__":
             time.sleep(1)
 
         send_message(driver, args.message)
-        wait_for_real_agent_reply(driver, old_msgs, timeout=20)
+        wait_for_real_agent_reply(driver, old_msgs, timeout=600)
 
     except KeyboardInterrupt:
         print("\n🛑 Script interrupted by user")
