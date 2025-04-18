@@ -7,6 +7,7 @@ import time
 import argparse
 import requests
 from datetime import datetime
+import sys
 
 # Configuration
 LOGIN_URL = "https://thenorthnet.oh.3cx.us/MyPhone/c2clogin"
@@ -30,25 +31,29 @@ def perform_login(name, email):
     
     if response.status_code != 200:
         print("❌ Login failed")
-        exit(1)
+        sys.exit(1)
 
     try:
         data = response.json()
         return data["sessionId"], data["pass"], data["token"]
     except Exception as e:
         print("❌ Failed to parse login response:", e)
-        exit(1)
+        sys.exit(1)
 
 def get_agent_messages(driver):
     """Extract agent messages from shadow DOM"""
-    return driver.execute_script('''
-        const host1 = document.querySelector("#container > call-us-selector");
-        const root1 = host1?.shadowRoot;
-        const host2 = root1?.querySelector("#wp-live-chat-by-3CX");
-        const root2 = host2?.shadowRoot;
-        const spans = root2?.querySelectorAll("div.msg_agent_a70fg > span");
-        return spans ? Array.from(spans).map(span => span.textContent.trim()) : [];
-    ''')
+    try:
+        return driver.execute_script('''
+            const host1 = document.querySelector("#container > call-us-selector");
+            const root1 = host1?.shadowRoot;
+            const host2 = root1?.querySelector("#wp-live-chat-by-3CX");
+            const root2 = host2?.shadowRoot;
+            const spans = root2?.querySelectorAll("div.msg_agent_a70fg > span");
+            return spans ? Array.from(spans).map(span => span.textContent.trim()) : [];
+        ''')
+    except Exception as e:
+        print("⚠️ Error reading agent messages:", e)
+        return []
 
 def send_message(driver, message):
     """Send message through chat interface"""
@@ -82,17 +87,14 @@ def wait_for_real_agent_reply(driver, previous_messages, timeout=600):
     replied = False
 
     while time.time() - start_time < timeout:
-        try:
-            messages = get_agent_messages(driver)
-            for msg in messages:
-                if msg not in seen:
-                    print(f"💬 Agent: {msg}")
-                    save_chat_message("Agent", msg)
-                    replied = True
-                    return
-            time.sleep(2)
-        except Exception as e:
-            print(f"❌ Error reading agent message: {e}")
+        messages = get_agent_messages(driver)
+        for msg in messages:
+            if msg not in seen:
+                print(f"💬 Agent: {msg}")
+                save_chat_message("Agent", msg)
+                replied = True
+                return
+        time.sleep(2)
 
     if not replied:
         print("⌛ No reply received from agent in 10 minutes.")
@@ -111,54 +113,45 @@ def initialize_chat_session(name, email, token):
         "wplc-ga-initiated": "29"
     }
 
-    # Linux-specific Chrome options
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")  # safer than --headless=new
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--single-process")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-logging")
-    options.add_argument("--log-level=3")
-    options.add_argument("--incognito")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-gpu")
 
-    # Initialize WebDriver
     try:
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
         
         driver.get(f"https://thenorthnet.oh.3cx.us/callus/#{C2CID}")
         time.sleep(2)
-        
+
         for key, value in session_data.items():
             value_js = json.dumps(value) if isinstance(value, (dict, bool)) else f'"{value}"'
             driver.execute_script(f'window.localStorage.setItem("{key}", {value_js});')
-        
+
         driver.refresh()
-        time.sleep(6)
+        time.sleep(10)  # increased to allow full load
         return driver
-        
+
     except Exception as e:
         print(f"❌ Failed to initialize Chrome: {str(e)}")
-        exit(1)
+        sys.exit(1)
 
 if __name__ == "__main__":
-    # Clear chat log
     open("chat.txt", "w").close()
 
-    # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", help="Your name")
     parser.add_argument("--email", help="Your email")
     parser.add_argument("--message", required=True, help="Message to send")
     args = parser.parse_args()
 
-    # Validate arguments based on mode
     name = args.name or ""
     email = args.email or ""
 
@@ -169,6 +162,7 @@ if __name__ == "__main__":
     elif MODE == 2 and not name:
         parser.error("Mode 2 requires --name")
 
+    driver = None
     try:
         print("🔐 Logging in...")
         session_id, pwd, token = perform_login(name, email)
@@ -194,6 +188,9 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Unexpected error: {str(e)}")
     finally:
-        if 'driver' in locals():
-            driver.quit()
+        try:
+            if driver and driver.service.process and driver.session_id:
+                driver.quit()
+        except Exception:
+            pass
         print("🚪 Chat session ended.")
