@@ -1,32 +1,23 @@
 #!/bin/bash
 
-# 1. Update the package list
+set -e  # Exit immediately if a command exits with a non-zero status
+
+echo "🔄 Updating package lists..."
 sudo apt update
 
-# 2. Install essential dependencies
+echo "📦 Installing essential system dependencies..."
 sudo apt install -y wget unzip curl gnupg2 software-properties-common
 
-# 6. Install Google Chrome
-sudo apt update
-sudo apt install -y google-chrome-stable
+echo "🌐 Downloading and installing Google Chrome..."
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
+rm google-chrome-stable_current_amd64.deb
 
-pip install webdriver-manager
-# 7. Install matching ChromeDriver
-#CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+' | head -1)
-#DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
-#wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
-#unzip /tmp/chromedriver.zip -d /tmp/
-#sudo mv /tmp/chromedriver /usr/local/bin/
-#sudo chmod +x /usr/local/bin/chromedriver
-
-# 8. Update package lists
-sudo apt update
-
-# 9. Install other necessary packages (including Python dependencies)
+echo "🐍 Installing Python and virtual environment tools..."
 sudo apt install -y python3 python3-pip python3-venv
 
-# 10. Install Selenium and other Python dependencies
-pip3 install selenium requests
+echo "📚 Installing Python packages (Selenium, requests, webdriver-manager)..."
+pip3 install --upgrade pip
+pip3 install selenium requests webdriver-manager
 
-# 11. Confirm installation of necessary packages
 echo "✅ Installation complete! All dependencies installed successfully."
